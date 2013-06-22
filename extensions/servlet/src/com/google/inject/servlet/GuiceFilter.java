@@ -16,11 +16,11 @@
 
 package com.google.inject.servlet;
 
-import com.google.inject.Inject;
-import com.google.inject.OutOfScopeException;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Callable;
 import java.util.logging.Logger;
+
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -30,6 +30,9 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.google.inject.Inject;
+import com.google.inject.OutOfScopeException;
 
 /**
  * <p>
@@ -56,7 +59,7 @@ import javax.servlet.http.HttpServletResponse;
  * @author dhanji@gmail.com (Dhanji R. Prasanna)
  */
 public class GuiceFilter implements Filter {
-  static final ThreadLocal<Context> localContext = new ThreadLocal<Context>();
+  public static final ThreadLocal<Context> localContext = new ThreadLocal<Context>();
   static volatile FilterPipeline pipeline = new DefaultFilterPipeline();
 
   /**
@@ -129,7 +132,7 @@ public class GuiceFilter implements Filter {
     return servletContext.get();
   }
 
-  static Context getContext() {
+  public static Context getContext() {
     Context context = localContext.get();
     if (context == null) {
       throw new OutOfScopeException("Cannot access scoped object. Either we"
@@ -140,23 +143,24 @@ public class GuiceFilter implements Filter {
     return context;
   }
 
-  static class Context {
+  public static class Context {
 
     final HttpServletRequest request;
     final HttpServletResponse response;
 
-    Context(HttpServletRequest request, HttpServletResponse response) {
+    public Context(HttpServletRequest request, HttpServletResponse response) {
       this.request = request;
       this.response = response;
     }
 
-    HttpServletRequest getRequest() {
+    public HttpServletRequest getRequest() {
       return request;
     }
 
-    HttpServletResponse getResponse() {
+	public HttpServletResponse getResponse() {
       return response;
     }
+	
   }
 
   public void init(FilterConfig filterConfig) throws ServletException {

@@ -16,10 +16,15 @@
 package com.google.inject.servlet;
 
 import java.io.IOException;
+
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.google.inject.servlet.GuiceFilter.Context;
 
 /**
  * A Filter chain impl which basically passes itself to the "current" filter and iterates the chain
@@ -49,22 +54,32 @@ class FilterChainInvocation implements FilterChain {
     this.proceedingChain = proceedingChain;
   }
 
-  public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse)
-      throws IOException, ServletException {
-    index++;
+	public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse) throws IOException, ServletException {
+		index++;
 
-    //dispatch down the chain while there are more filters
-    if (index < filterDefinitions.length) {
-      filterDefinitions[index].doFilter(servletRequest, servletResponse, this);
-    } else {
+		Context savedContext = GuiceFilter.getContext();
+		
+		Context context = new Context((HttpServletRequest) servletRequest, (HttpServletResponse) servletResponse);
+		GuiceFilter.localContext.set(context);
 
-      //we've reached the end of the filterchain, let's try to dispatch to a servlet
-      final boolean serviced = servletPipeline.service(servletRequest, servletResponse);
+		try {
+			// dispatch down the chain while there are more filters
+			if (index < filterDefinitions.length) {
+				filterDefinitions[index].doFilter(servletRequest, servletResponse, this);
+			} else {
 
-      //dispatch to the normal filter chain only if one of our servlets did not match
-      if (!serviced) {
-        proceedingChain.doFilter(servletRequest, servletResponse);
-      }
-    }
-  }
+				// we've reached the end of the filterchain, let's try to
+				// dispatch to a servlet
+				final boolean serviced = servletPipeline.service(servletRequest, servletResponse);
+
+				// dispatch to the normal filter chain only if one of our
+				// servlets did not match
+				if (!serviced) {
+					proceedingChain.doFilter(servletRequest, servletResponse);
+				}
+			}
+		} finally {
+			GuiceFilter.localContext.set(savedContext);
+		}
+	}
 }
