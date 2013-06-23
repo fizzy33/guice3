@@ -1,1 +1,5 @@
+build
 target
+extensions/struts2/lib
+extensions/persist/lib/
+
