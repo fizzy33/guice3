@@ -1,12 +1,14 @@
 package com.google.inject.servlet;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Key;
-import com.google.inject.Singleton;
+import static com.google.inject.servlet.ManagedServletPipeline.REQUEST_DISPATCHER_REQUEST;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -16,13 +18,16 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import junit.framework.TestCase;
+
 import org.easymock.EasyMock;
 import org.easymock.IMocksControl;
 
-import static com.google.inject.servlet.ManagedServletPipeline.REQUEST_DISPATCHER_REQUEST;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Key;
+import com.google.inject.Singleton;
 
 /**
  *
@@ -70,7 +75,7 @@ public class FilterDispatchIntegrationTest extends TestCase {
     pipeline.initPipeline(null);
 
     // create ourselves a mock request with test URI
-    HttpServletRequest requestMock = control.createMock(HttpServletRequest.class);
+    final HttpServletRequest requestMock = control.createMock(HttpServletRequest.class);
 
     expect(requestMock.getRequestURI())
             .andReturn("/index.html")
@@ -82,19 +87,25 @@ public class FilterDispatchIntegrationTest extends TestCase {
     requestMock.setAttribute(REQUEST_DISPATCHER_REQUEST, true);
     requestMock.removeAttribute(REQUEST_DISPATCHER_REQUEST);
 
-    HttpServletResponse responseMock = control.createMock(HttpServletResponse.class);
+    final HttpServletResponse responseMock = control.createMock(HttpServletResponse.class);
     expect(responseMock.isCommitted())
         .andReturn(false)
         .anyTimes();
     responseMock.resetBuffer();
     expectLastCall().anyTimes();
 
-    FilterChain filterChain = control.createMock(FilterChain.class);
+    final FilterChain filterChain = control.createMock(FilterChain.class);
 
     //dispatch request
     control.replay();
-    pipeline.dispatch(requestMock, responseMock, filterChain);
-    pipeline.destroyPipeline();
+    GuiceFilter.withStack(null, null, new Callable<Void>() {
+		@Override
+		public Void call() throws Exception {
+		    pipeline.dispatch(requestMock, responseMock, filterChain);
+		    pipeline.destroyPipeline();
+			return null;
+		}
+	});
     control.verify();
 
     TestServlet servlet = injector.getInstance(TestServlet.class);
@@ -126,7 +137,7 @@ public class FilterDispatchIntegrationTest extends TestCase {
     pipeline.initPipeline(null);
 
     //create ourselves a mock request with test URI
-    HttpServletRequest requestMock = control.createMock(HttpServletRequest.class);
+    final HttpServletRequest requestMock = control.createMock(HttpServletRequest.class);
 
     expect(requestMock.getRequestURI())
             .andReturn("/index.xhtml")
@@ -136,11 +147,17 @@ public class FilterDispatchIntegrationTest extends TestCase {
         .anyTimes();
 
     //dispatch request
-    FilterChain filterChain = control.createMock(FilterChain.class);
+    final FilterChain filterChain = control.createMock(FilterChain.class);
     filterChain.doFilter(requestMock, null);
     control.replay();
-    pipeline.dispatch(requestMock, null, filterChain);
-    pipeline.destroyPipeline();
+    GuiceFilter.withStack(null, null, new Callable<Void>() {
+		@Override
+		public Void call() throws Exception {
+		    pipeline.dispatch(requestMock, null, filterChain);
+		    pipeline.destroyPipeline();
+			return null;
+		}
+	});
     control.verify();
 
     assertTrue("lifecycle states did not "
@@ -167,7 +184,7 @@ public class FilterDispatchIntegrationTest extends TestCase {
     pipeline.initPipeline(null);
 
     //create ourselves a mock request with test URI
-    HttpServletRequest requestMock = control.createMock(HttpServletRequest.class);
+    final HttpServletRequest requestMock = control.createMock(HttpServletRequest.class);
 
     expect(requestMock.getRequestURI())
             .andReturn("/index")
@@ -177,11 +194,17 @@ public class FilterDispatchIntegrationTest extends TestCase {
         .anyTimes();
 
     // dispatch request
-    FilterChain filterChain = control.createMock(FilterChain.class);
+    final FilterChain filterChain = control.createMock(FilterChain.class);
     filterChain.doFilter(requestMock, null);
     control.replay();
-    pipeline.dispatch(requestMock, null, filterChain);
-    pipeline.destroyPipeline();
+    GuiceFilter.withStack(null, null, new Callable<Void>() {
+		@Override
+		public Void call() throws Exception {
+	    pipeline.dispatch(requestMock, null, filterChain);
+	    pipeline.destroyPipeline();
+		return null;
+	}
+	});
     control.verify();
 
     assertTrue("lifecycle states did not fire "

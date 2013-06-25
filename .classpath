@@ -49,7 +49,6 @@
 	<classpathentry kind="lib" path="extensions/persist/lib/oro-2.0.8.jar"/>
 	<classpathentry kind="lib" path="extensions/persist/lib/servlet-api-2.5.jar"/>
 	<classpathentry kind="lib" path="extensions/persist/lib/xwork-2.0.4.jar"/>
-	<classpathentry kind="lib" path="extensions/servlet/lib/build/servlet-api-2.5.jar"/>
 	<classpathentry kind="lib" path="extensions/struts2/lib/ant-1.6.5.jar"/>
 	<classpathentry kind="lib" path="extensions/struts2/lib/commons-fileupload-1.2.1.jar"/>
 	<classpathentry kind="lib" path="extensions/struts2/lib/commons-io-1.3.2.jar"/>

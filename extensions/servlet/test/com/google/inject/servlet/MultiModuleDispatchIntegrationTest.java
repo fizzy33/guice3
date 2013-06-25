@@ -1,16 +1,13 @@
 package com.google.inject.servlet;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Key;
-import com.google.inject.Singleton;
-
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
+
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -18,7 +15,13 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+
 import junit.framework.TestCase;
+
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Key;
+import com.google.inject.Singleton;
 
 /**
  *
@@ -70,7 +73,7 @@ public class MultiModuleDispatchIntegrationTest extends TestCase {
     pipeline.initPipeline(null);
 
     //create ourselves a mock request with test URI
-    HttpServletRequest requestMock = createMock(HttpServletRequest.class);
+    final HttpServletRequest requestMock = createMock(HttpServletRequest.class);
 
     expect(requestMock.getRequestURI())
             .andReturn("/index.html")
@@ -81,8 +84,14 @@ public class MultiModuleDispatchIntegrationTest extends TestCase {
 
     //dispatch request
     replay(requestMock);
-    pipeline.dispatch(requestMock, null, createMock(FilterChain.class));
-    pipeline.destroyPipeline();
+    GuiceFilter.withStack(null, null, new Callable<Void>() {
+		@Override
+		public Void call() throws Exception {
+		    pipeline.dispatch(requestMock, null, createMock(FilterChain.class));
+		    pipeline.destroyPipeline();
+			return null;
+		}
+    });
 
     verify(requestMock);
 

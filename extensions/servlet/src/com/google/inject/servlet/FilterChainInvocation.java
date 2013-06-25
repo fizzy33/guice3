@@ -57,11 +57,7 @@ class FilterChainInvocation implements FilterChain {
 	public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse) throws IOException, ServletException {
 		index++;
 
-		Context savedContext = GuiceFilter.getContext();
-		
-		Context context = new Context((HttpServletRequest) servletRequest, (HttpServletResponse) servletResponse);
-		GuiceFilter.localContext.set(context);
-
+		GuiceFilter.getRequestResponseStack().push(servletRequest, servletResponse);
 		try {
 			// dispatch down the chain while there are more filters
 			if (index < filterDefinitions.length) {
@@ -79,7 +75,7 @@ class FilterChainInvocation implements FilterChain {
 				}
 			}
 		} finally {
-			GuiceFilter.localContext.set(savedContext);
+			GuiceFilter.getRequestResponseStack().pop();
 		}
 	}
 }

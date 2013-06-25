@@ -49,7 +49,7 @@ public class ServletScopes {
         public T get() {
           // Check if the alternate request scope should be used, if no HTTP
           // request is in progress.
-          if (null == GuiceFilter.localContext.get()) {
+          if (null == GuiceFilter.getRequestResponseStack()) {
 
             // NOTE(dhanji): We don't need to synchronize on the scope map
             // unlike the HTTP request because we're the only ones who have
@@ -183,20 +183,19 @@ public class ServletScopes {
       private HttpServletRequest request = continuingRequest;
 
       public T call() throws Exception {
-        GuiceFilter.Context context = GuiceFilter.localContext.get();
-        Preconditions.checkState(null == context,
+        Preconditions.checkState(null == GuiceFilter.getRequestResponseStack(),
             "Cannot continue request in the same thread as a HTTP request!");
 
         // Only set up the request continuation if we're running in a
         // new vanilla thread.
-        GuiceFilter.localContext.set(new GuiceFilter.Context(request, null));
+        RequestResponseStack reqRespStack = new RequestResponseStack();
+        GuiceFilter.getThreadStorage().set(reqRespStack);
+        
+        reqRespStack.push(request, null);
         try {
           return callable.call();
         } finally {
-          // Clear the copied context if we set one up.
-          if (null == context) {
-            GuiceFilter.localContext.remove();
-          }
+          GuiceFilter.getThreadStorage().remove();
         }
       }
     };
@@ -240,7 +239,7 @@ public class ServletScopes {
 
     return new Callable<T>() {
       public T call() throws Exception {
-        Preconditions.checkState(null == GuiceFilter.localContext.get(),
+        Preconditions.checkState(null == GuiceFilter.getRequestResponseStack(),
             "An HTTP request is already in progress, cannot scope a new request in this thread.");
         Preconditions.checkState(null == requestScopeContext.get(),
             "A request scope is already in progress, cannot scope a new request in this thread.");

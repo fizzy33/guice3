@@ -33,6 +33,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.google.inject.Inject;
 import com.google.inject.OutOfScopeException;
+import com.google.inject.internal.util.Preconditions;
 
 /**
  * <p>
@@ -59,7 +60,8 @@ import com.google.inject.OutOfScopeException;
  * @author dhanji@gmail.com (Dhanji R. Prasanna)
  */
 public class GuiceFilter implements Filter {
-  public static final ThreadLocal<Context> localContext = new ThreadLocal<Context>();
+	
+  private static final ThreadLocal<RequestResponseStack> threadStorage = new ThreadLocal<RequestResponseStack>();
   static volatile FilterPipeline pipeline = new DefaultFilterPipeline();
 
   /**
@@ -103,20 +105,19 @@ public class GuiceFilter implements Filter {
       ServletResponse servletResponse, FilterChain filterChain)
       throws IOException, ServletException {
 
-    Context previous = localContext.get();
+	RequestResponseStack reqRespStack = new RequestResponseStack();
+	threadStorage.set(reqRespStack);
 
     // Prefer the injected pipeline, but fall back on the static one for web.xml users.
     FilterPipeline filterPipeline = null != injectedPipeline ? injectedPipeline : pipeline;
 
+    reqRespStack.push(servletRequest, servletResponse);
     try {
-      localContext.set(new Context((HttpServletRequest) servletRequest,
-          (HttpServletResponse) servletResponse));
-
       //dispatch across the servlet pipeline, ensuring web.xml's filterchain is honored
       filterPipeline.dispatch(servletRequest, servletResponse, filterChain);
 
     } finally {
-      localContext.set(previous);
+    	threadStorage.set(null);
     }
   }
 
@@ -132,15 +133,23 @@ public class GuiceFilter implements Filter {
     return servletContext.get();
   }
 
+  public static ThreadLocal<RequestResponseStack> getThreadStorage() {
+	  return threadStorage;
+  }
+  
+  public static RequestResponseStack getRequestResponseStack() {
+	  return threadStorage.get();
+  }
+  
   public static Context getContext() {
-    Context context = localContext.get();
-    if (context == null) {
-      throw new OutOfScopeException("Cannot access scoped object. Either we"
-          + " are not currently inside an HTTP Servlet request, or you may"
-          + " have forgotten to apply " + GuiceFilter.class.getName()
-          + " as a servlet filter for this request.");
-    }
-    return context;
+	  RequestResponseStack stack = threadStorage.get();
+	    if (stack == null) {
+	        throw new OutOfScopeException("Cannot access scoped object. Either we"
+	            + " are not currently inside an HTTP Servlet request, or you may"
+	            + " have forgotten to apply " + GuiceFilter.class.getName()
+	            + " as a servlet filter for this request.");
+	      }
+    return stack.currentContext();
   }
 
   public static class Context {
@@ -175,6 +184,21 @@ public class GuiceFilter implements Filter {
     FilterPipeline filterPipeline = null != injectedPipeline ? injectedPipeline : pipeline;
     filterPipeline.initPipeline(servletContext);
   }
+  
+  public static <T> T withStack(ServletRequest req, ServletResponse resp, Callable<T> callable) {
+      Preconditions.checkState(null == GuiceFilter.getRequestResponseStack(),
+              "Cannot continue request in the same thread as another HTTP request!");
+      RequestResponseStack reqRespStack = new RequestResponseStack();
+	  threadStorage.set(reqRespStack);
+	  reqRespStack.push(req, resp);
+	  try {
+		  return callable.call();
+	  } catch ( Exception e ) {
+		  throw throwUnchecked(e);
+	  } finally {
+	    threadStorage.remove();
+	  }
+  }
 
   public void destroy() {
 
@@ -188,4 +212,23 @@ public class GuiceFilter implements Filter {
       servletContext.clear();
     }
   }
+  
+
+  public static RuntimeException throwUnchecked(Throwable th) {
+      GuiceFilter.<RuntimeException>throwUncheckedImpl(th);
+      return null;
+  }
+
+
+  /**
+   * Remember, Generics are erased in Java. So this basically throws an Exception. The real
+   * Type of T is lost during the compilation
+   */
+  @SuppressWarnings("unchecked")
+  private static <T extends Throwable> void throwUncheckedImpl(Throwable toThrow) throws T {
+      // Since the type is erased, this cast actually does nothing!!!
+      // we can throw any exception
+      throw (T) toThrow;
+  }
+  
 }

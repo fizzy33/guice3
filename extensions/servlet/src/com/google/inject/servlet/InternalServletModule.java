@@ -91,6 +91,10 @@ final class InternalServletModule extends AbstractModule {
     bind(ServletContext.class).toProvider(BackwardsCompatibleServletContextProvider.class);
   }
 
+  @Provides @RequestScoped RequestResponseStack provideRequestResponseStack() {
+    return GuiceFilter.getRequestResponseStack();
+  }
+
   @Provides @RequestScoped HttpServletRequest provideHttpServletRequest() {
     return GuiceFilter.getRequest();
   }
