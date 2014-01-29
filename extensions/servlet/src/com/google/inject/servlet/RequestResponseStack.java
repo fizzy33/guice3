@@ -11,7 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 
 
 
-class RequestResponseStack {
+public class RequestResponseStack {
 
 	private List<GuiceFilter.Context> _stack = new ArrayList<GuiceFilter.Context>();
 
